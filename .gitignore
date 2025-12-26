@@ -1,0 +1,27 @@
+Byte-compiled / optimized / DLL files
+
+pycache/
+*.py[cod]
+*$py.class
+
+Jupyter Notebook checkpoints
+
+.ipynb_checkpoints/
+
+Environment
+
+.env/
+*.conda
+*.virtualenv
+
+PyTorch models
+
+model/*.pth
+
+Matplotlib plots
+
+model/*.png
+
+VS Code settings
+
+.vscode/
