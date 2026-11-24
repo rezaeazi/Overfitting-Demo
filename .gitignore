@@ -1,7 +1,6 @@
 Byte-compiled / optimized / DLL files
 
 pycache/
-*.py
 *$py.class
 
 Jupyter Notebook checkpoints
@@ -25,3 +24,9 @@ model/*.png
 VS Code settings
 
 .vscode/
+
+__pycache__/
+*.pyc
+.pytest_cache/
+data/
+reports/
