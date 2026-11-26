@@ -1,7 +1,11 @@
-torch==2.2.0
-torchvision==0.18.1
-torchaudio==2.2.0
+# Current market-data experiment
+numpy
 pandas
-scikit-learn
+requests
 matplotlib
+torch
+pytest
+
+# Legacy synthetic-data demo in scripts/ and notebooks/
+scikit-learn
 jupyter

@@ -4,7 +4,7 @@ import pytest
 
 from overfit.config import Config
 from overfit.report import summarize
-from overfit.validate import walk_forward
+from overfit.validate import run_multiple_seeds, walk_forward
 
 
 def test_walk_forward_windows_are_chronological_and_disjoint():
@@ -36,6 +36,49 @@ def test_summarize_gap():
     assert list(summary.index) == ["a", "b"]
     assert summary.loc["a", "gap"] == pytest.approx(0.4)
     assert summary.loc["b", "gap"] == pytest.approx(0.05)
+
+
+def test_summarize_averages_folds_before_calculating_seed_std():
+    results = pd.DataFrame(
+        {
+            "seed": [42, 42, 43, 43],
+            "variant": ["a"] * 4,
+            "train_acc": [0.8, 0.8, 0.9, 0.9],
+            "test_acc": [0.4, 0.6, 0.6, 0.8],
+            "baseline_acc": [0.5] * 4,
+            "train_loss": [0.2] * 4,
+            "test_loss": [1.0] * 4,
+        }
+    )
+
+    summary = summarize(results)
+
+    assert summary.loc["a", "test_acc"] == pytest.approx(0.6)
+    assert summary.loc["a", "test_acc_std"] == pytest.approx(0.2 / np.sqrt(2))
+    assert summary.loc["a", "gap_std"] == pytest.approx(0.1 / np.sqrt(2))
+
+
+def test_run_multiple_seeds_records_seed_values():
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=(60, 5)).astype(np.float32)
+    y = (rng.random(60) > 0.5).astype(np.float32)
+    cfg = Config(train_size=20, test_size=10, epochs=1)
+
+    results = run_multiple_seeds(x, y, cfg, (42, 43))
+
+    assert set(results["seed"]) == {42, 43}
+    assert results.groupby("seed").size().to_dict() == {42: 24, 43: 24}
+
+
+@pytest.mark.parametrize("seeds", [(), (42, 42)])
+def test_run_multiple_seeds_rejects_empty_or_duplicate_seeds(seeds):
+    with pytest.raises(ValueError):
+        run_multiple_seeds(
+            np.zeros((40, 5), np.float32),
+            np.zeros(40, np.float32),
+            Config(),
+            seeds,
+        )
 
 
 def test_run_end_to_end_on_synthetic_data():

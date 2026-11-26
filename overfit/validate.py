@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterator
+from dataclasses import replace
 
 import numpy as np
 import pandas as pd
@@ -71,3 +72,21 @@ def run(x: np.ndarray, y: np.ndarray, cfg: Config) -> pd.DataFrame:
             )
         log.info("fold %d done", fold)
     return pd.DataFrame(rows)
+
+
+def run_multiple_seeds(
+    x: np.ndarray, y: np.ndarray, cfg: Config, seeds: tuple[int, ...]
+) -> pd.DataFrame:
+    """Run the same walk-forward experiment for each seed."""
+    if not seeds:
+        raise ValueError("at least one seed is required")
+    if len(set(seeds)) != len(seeds):
+        raise ValueError("seeds must be unique")
+
+    return pd.concat(
+        [
+            run(x, y, replace(cfg, seed=seed)).assign(seed=seed)
+            for seed in seeds
+        ],
+        ignore_index=True,
+    )

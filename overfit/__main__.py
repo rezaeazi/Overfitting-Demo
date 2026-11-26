@@ -11,7 +11,7 @@ import requests
 from .config import Config
 from .data import DataError, build_dataset, load_ohlcv
 from .report import plot_summary, summarize
-from .validate import run
+from .validate import run_multiple_seeds
 
 log = logging.getLogger("overfit")
 
@@ -21,6 +21,14 @@ def main() -> int:
     parser.add_argument("--symbol", default=Config.symbol)
     parser.add_argument("--resolution", default=Config.resolution, choices=["D", "60"])
     parser.add_argument("--refresh", action="store_true", help="re-download candles")
+    parser.add_argument(
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=[42, 43, 44, 45, 46],
+        metavar="SEED",
+        help="random seeds to evaluate (default: 42 43 44 45 46)",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -28,7 +36,7 @@ def main() -> int:
 
     try:
         x, y = build_dataset(load_ohlcv(cfg, refresh=args.refresh))
-        results = run(x, y, cfg)
+        results = run_multiple_seeds(x, y, cfg, tuple(args.seeds))
     except (DataError, ValueError, requests.RequestException) as exc:
         log.error("%s", exc)
         return 1
