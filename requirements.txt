@@ -5,7 +5,3 @@ requests
 matplotlib
 torch
 pytest
-
-# Legacy synthetic-data demo in scripts/ and notebooks/
-scikit-learn
-jupyter

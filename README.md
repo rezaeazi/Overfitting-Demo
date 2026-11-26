@@ -87,11 +87,7 @@ docker run --rm \
 ```
 overfit/     package: config, data, model, validate, report, CLI
 tests/       pytest suite (no network needed)
-notebooks/   original synthetic-data demo
-scripts/     original synthetic-data training scripts
 ```
-
-`scripts/` and `notebooks/` are retained as the original synthetic-data prototype; their dependencies (`scikit-learn` and `jupyter`) remain in `requirements.txt`.
 
 ## Limitations
 
