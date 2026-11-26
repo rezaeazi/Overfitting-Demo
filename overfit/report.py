@@ -10,7 +10,7 @@ METRICS = ["train_acc", "test_acc", "baseline_acc", "train_loss", "test_loss"]
 
 def summarize(results: pd.DataFrame) -> pd.DataFrame:
     """Mean metrics by variant, with cross-seed sample standard deviations."""
-    if "seed" in results:
+    if "seed" in results and results["seed"].nunique() > 1:
         by_seed = results.groupby(["seed", "variant"], sort=False)[METRICS].mean()
         by_seed["gap"] = by_seed["train_acc"] - by_seed["test_acc"]
         means = by_seed.groupby("variant", sort=False).mean()

@@ -12,11 +12,11 @@ This is an evaluation exercise, not a trading strategy and not investment advice
 
 | Variant | Train acc (mean ± SD) | Test acc (mean ± SD) | Gap (pts, mean ± SD) | Test loss (mean ± SD) |
 |---|---|---|---|---|
-| logistic | 53.4% ± 0.0 | 50.7% ± 0.0 | 2.7 ± 0.1 | 0.687 ± 0.000 |
-| mlp | 97.6% ± 0.3 | 49.7% ± 1.2 | 47.9 ± 1.2 | 2.434 ± 0.178 |
-| dropout | 76.9% ± 0.5 | 48.9% ± 1.3 | 28.1 ± 1.7 | 0.911 ± 0.020 |
-| weight_decay | 87.5% ± 0.5 | 48.9% ± 0.5 | 38.6 ± 0.7 | 0.987 ± 0.031 |
-| early_stop | 56.3% ± 0.9 | 50.0% ± 0.8 | 6.3 ± 1.2 | 0.707 ± 0.007 |
+| logistic | 53.4% ± 0.0 | 50.7% ± 0.0 | 2.7 ± 0.1 | 0.699 ± 0.000 |
+| mlp | 97.6% ± 0.2 | 49.8% ± 0.9 | 47.8 ± 1.0 | 2.437 ± 0.171 |
+| dropout | 77.0% ± 0.5 | 48.9% ± 1.4 | 28.0 ± 1.7 | 0.911 ± 0.022 |
+| weight_decay | 87.5% ± 0.5 | 48.9% ± 0.5 | 38.6 ± 0.7 | 0.991 ± 0.028 |
+| early_stop | 56.3% ± 0.9 | 50.0% ± 0.8 | 6.2 ± 1.2 | 0.706 ± 0.006 |
 | all | 55.6% ± 0.7 | 50.2% ± 0.5 | 5.4 ± 1.0 | 0.700 ± 0.003 |
 
 Majority-class baseline: 49.4% test accuracy. Each seed has 29 walk-forward folds (1,740 test days); the table reports the mean and sample standard deviation of each seed's fold-averaged metric.
@@ -32,7 +32,7 @@ Majority-class baseline: 49.4% test accuracy. Each seed has 29 walk-forward fold
 - **Label:** direction of the next day's close.
 - **Walk-forward:** a rolling 365-day train window, the next 60 days as test, moved forward 60 days at a time (29 folds per seed). The last 20% of each train window is a chronological validation split used only by early stopping.
 - **Seeds:** 42 through 46 by default. Metrics are first averaged over folds within each seed, then the five seed averages are summarized; the reported SD is not a confidence interval.
-- **Leakage controls:** features use past data only, scaling statistics come from the training rows only, z-scores are clipped to ±5, and the still-open candle is dropped.
+- **Leakage controls:** features use past data only, scaling statistics come from the training rows only, z-scores are clipped to ±5, and any still-open candle is reported before being explicitly excluded.
 - **Models:** full-batch training with AdamW on CPU, at most about 5,000 parameters.
 
 | Variant | Setup |
@@ -48,6 +48,7 @@ Majority-class baseline: 49.4% test accuracy. Each seed has 29 walk-forward fold
 
 - Volume is zero in the Nobitex candles before 2025-06-30, so no volume features are used.
 - A 14-day hole sits at that boundary. It is left as is and touches well under 1% of the rows.
+- The data audit reports invalid/duplicate/out-of-order candles, gaps, zero volume, and stale or incomplete final candles. Critical integrity errors stop training; gaps and zero-volume periods are reported without filling or silently repairing them. Daily intervals of 23–25 hours are allowed for timezone/DST variation.
 
 ## Quick start
 
@@ -61,9 +62,11 @@ python -m pytest
 python -m overfit              # downloads and caches the candles on first run
 python -m overfit --refresh    # re-download the candles
 python -m overfit --seeds 1 2 3 4 5
+python -m overfit --quick      # one seed, 20 epochs, for a fast smoke test
+python -m overfit --threads 2  # cap CPU thread usage (default: 2)
 ```
 
-Results are written to `reports/` (`folds.csv` includes one row per seed/fold/model; `summary.csv` includes means and cross-seed SDs; `summary.png` shows the SD as error bars). Options: `--symbol`, `--resolution D|60` and `--seeds`.
+Results are written to `reports/` (`data_quality.json` and `data_gaps.csv` contain the input audit; `folds.csv` includes one row per seed/fold/model; `summary.csv` includes means and, when multiple seeds are used, cross-seed SDs; `summary.png` shows SD error bars; `run_metadata.json` records runtime and resource settings). A lock prevents two CLI runs from writing to the same report directory simultaneously. Options: `--symbol`, `--resolution D|60`, `--seeds`, `--quick` and `--threads`.
 
 ## Docker
 

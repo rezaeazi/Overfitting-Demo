@@ -16,6 +16,8 @@ class Config:
     test_size: int = 60
     val_fraction: float = 0.2  # chronological tail of the train window
     epochs: int = 200
+    quick_epochs: int = 20
+    threads: int = 2
     lr: float = 1e-2
     seed: int = 42
 

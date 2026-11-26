@@ -58,6 +58,25 @@ def test_summarize_averages_folds_before_calculating_seed_std():
     assert summary.loc["a", "gap_std"] == pytest.approx(0.1 / np.sqrt(2))
 
 
+def test_summarize_single_seed_does_not_report_cross_seed_std():
+    results = pd.DataFrame(
+        {
+            "seed": [42],
+            "variant": ["a"],
+            "train_acc": [0.8],
+            "test_acc": [0.6],
+            "baseline_acc": [0.5],
+            "train_loss": [0.2],
+            "test_loss": [0.7],
+        }
+    )
+
+    summary = summarize(results)
+
+    assert summary.loc["a", "gap"] == pytest.approx(0.2)
+    assert not any(column.endswith("_std") for column in summary.columns)
+
+
 def test_run_multiple_seeds_records_seed_values():
     rng = np.random.default_rng(0)
     x = rng.normal(size=(60, 5)).astype(np.float32)

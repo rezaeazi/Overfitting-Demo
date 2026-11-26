@@ -87,13 +87,28 @@ class _Session:
         return _Response(_payload(times))
 
 
-def test_fetch_merges_windows_and_dedupes():
+def test_fetch_merges_windows_without_reordering():
     cfg = Config(start="2021-01-01", end="2023-01-01", request_pause=0)
     session = _Session()
     frame = data.fetch_ohlcv(cfg, session=session)
     assert len(session.calls) > 1
     assert frame["time"].is_unique and frame["time"].is_monotonic_increasing
     assert frame["time"].diff().dropna().eq(86400).all()
+
+
+def test_fetch_preserves_out_of_order_api_rows_for_the_audit():
+    class _OutOfOrderSession:
+        def get(self, url, params, timeout):
+            step = data.STEP_SECONDS[params["resolution"]]
+            return _Response(_payload([params["from"] + step, params["from"]]))
+
+    frame = data.fetch_ohlcv(
+        Config(start="2021-01-01", end="2021-01-02", request_pause=0),
+        session=_OutOfOrderSession(),
+    )
+
+    assert not frame["time"].is_monotonic_increasing
+    assert frame["time"].is_unique
 
 
 def test_fetch_rejects_unknown_resolution():
@@ -115,3 +130,16 @@ def test_load_ohlcv_uses_cache(tmp_path, monkeypatch):
     assert len(calls) == 1 and len(first) == len(second)
     data.load_ohlcv(cfg, refresh=True)
     assert len(calls) == 2
+
+
+def test_load_ohlcv_keeps_open_candle_for_quality_audit(tmp_path, monkeypatch):
+    cfg = Config(cache_dir=tmp_path)
+    now = int(pd.Timestamp.now(tz="UTC").timestamp())
+    frame = _frame(2)
+    frame["time"] = [now - 86400, now]
+    monkeypatch.setattr(data, "fetch_ohlcv", lambda _cfg: frame)
+
+    loaded = data.load_ohlcv(cfg)
+
+    assert len(loaded) == 2
+    assert loaded["time"].iloc[-1] == now

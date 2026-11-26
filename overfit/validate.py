@@ -35,6 +35,9 @@ def _tensor(a: np.ndarray, mean: np.ndarray, std: np.ndarray) -> torch.Tensor:
 
 def run(x: np.ndarray, y: np.ndarray, cfg: Config) -> pd.DataFrame:
     """Return one row per (fold, variant) with train/test loss and accuracy."""
+    if cfg.threads < 1:
+        raise ValueError("threads must be positive")
+    torch.set_num_threads(cfg.threads)
     if len(x) < cfg.train_size + cfg.test_size:
         raise ValueError(
             f"need at least {cfg.train_size + cfg.test_size} rows, got {len(x)}"

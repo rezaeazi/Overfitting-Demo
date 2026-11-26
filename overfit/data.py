@@ -56,7 +56,9 @@ def parse_udf(payload: dict) -> pd.DataFrame:
         )
     except KeyError as exc:
         raise DataError(f"missing field in response: {exc}") from exc
-    return frame.astype({c: "float64" for c in COLUMNS[1:]} | {"time": "int64"})
+    for column in COLUMNS:
+        frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    return frame
 
 
 def _to_unix(date: str) -> int:
@@ -78,8 +80,13 @@ def fetch_ohlcv(cfg: Config, session: requests.Session | None = None) -> pd.Data
     step = STEP_SECONDS[cfg.resolution]
     end = _to_unix(cfg.end) if cfg.end else int(time.time())
     frames = []
-    for lo, hi in window_bounds(_to_unix(cfg.start), end, step):
-        params = {"symbol": cfg.symbol, "resolution": cfg.resolution, "from": lo, "to": hi}
+    for index, (lo, hi) in enumerate(window_bounds(_to_unix(cfg.start), end, step)):
+        params = {
+            "symbol": cfg.symbol,
+            "resolution": cfg.resolution,
+            "from": lo if index == 0 else lo + step,
+            "to": hi,
+        }
         response = session.get(BASE_URL, params=params, timeout=TIMEOUT)
         response.raise_for_status()
         frame = parse_udf(response.json())
@@ -88,12 +95,7 @@ def fetch_ohlcv(cfg: Config, session: requests.Session | None = None) -> pd.Data
         time.sleep(cfg.request_pause)
     if not frames:
         raise DataError(f"no candles returned for {cfg.symbol} ({cfg.resolution})")
-    return (
-        pd.concat(frames)
-        .drop_duplicates("time")
-        .sort_values("time")
-        .reset_index(drop=True)
-    )
+    return pd.concat(frames, ignore_index=True)
 
 
 def load_ohlcv(cfg: Config, refresh: bool = False) -> pd.DataFrame:
@@ -106,8 +108,7 @@ def load_ohlcv(cfg: Config, refresh: bool = False) -> pd.DataFrame:
         frame.to_csv(tmp, index=False)
         tmp.replace(path)  # atomic: an interrupted run never leaves a corrupt cache
         log.info("cached %d candles to %s", len(frame), path)
-    frame = pd.read_csv(path)
-    return frame[frame["time"] + STEP_SECONDS[cfg.resolution] <= time.time()]  # drop the open candle
+    return pd.read_csv(path)
 
 
 def build_dataset(frame: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
